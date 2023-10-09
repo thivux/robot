@@ -7,7 +7,7 @@ import math
 
 
 def compare_graph(target_graph, output_graph):
-    target_d = dict([((e[0], e[1]), e[2]) for e in target_graph]) #TODO: 3 phan tu trong e tuong ung voi gi?
+    target_d = dict([((e[0], e[1]), e[2]) for e in target_graph]) 
     output_d = dict([((e[0], e[1]), e[2]) for e in output_graph])
 
     errors = []
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     row = 5
     col = 5
     epsilon = 0.2
-    T = 10 #TODO: timestep?
+    T = 10 
     max_range = 2 
 
     env = GridworldEnv(plan=1, epislon=0.2, max_range=max_range)
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     for episode in range(10):
         s = env.reset() # list of 6 values : [1.0, 0.0, 1.0, 0.0, -0.5, 0.0]
         roll_out = [s] 
-        success = False #TODO: get goal or not?? 
+        success = False 
 
         for t in range(T):
             a = agent.get_action(s) # calculate the optimal action at state s

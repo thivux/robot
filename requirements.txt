@@ -1,3 +1,5 @@
 gym==0.22.*
 numpy
 matplotlib
+wandb
+pytorch==1.13.1
