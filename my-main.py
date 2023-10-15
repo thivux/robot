@@ -1,4 +1,3 @@
-# main.py
 from gridworld_env import GridworldEnv
 from agent import DQNAgent
 from extract_graph import build_graph
@@ -6,6 +5,7 @@ import os
 import numpy as np
 import math
 import wandb
+import itertools
 
 
 def compare_graph(target_graph, output_graph):
@@ -28,61 +28,77 @@ def compare_graph(target_graph, output_graph):
 
 
 if __name__ == '__main__':
-    plan = 1
-    epsilon = 0.2
-    T = 4
-    max_range = 2
-    threshold = 0.4 
+    plan_values = [1, 2]
+    epsilon_values = [0.2, 0.3] 
+    T_values = [4, 6, 8, 10]
+    max_range_values = [2, 3, 4, 5] 
+    threshold_values = [0.2, 0.5, 0.8]
 
-    env = GridworldEnv(plan=1, epislon=0.2, max_range=max_range)
-    state_dim = len(env.reset())  # 6
-    action_dim = env.action_space.n # 5
-    agent = DQNAgent(state_dim, action_dim, threshold=threshold)
-    history = []
-    episodes = 10000
+    config_combinations = itertools.product(
+        plan_values, epsilon_values, T_values, max_range_values, threshold_values
+    )
 
-    this_file_path = os.path.dirname(os.path.realpath(__file__))
-    input_file = os.path.join(this_file_path, 'plan{}.txt'.format(plan))
-    target_graph = build_graph(input_file, max_range, epsilon)
+    for config in config_combinations:
+        plan, epsilon, T, max_range, threshold = config
+        seed = 1
+        print(f'config: {config}')
 
-    # Log configuration parameters to WandB
-    config = {
-        "plan": plan,
-        "epsilon": epsilon,
-        "T": T,
-        "max_range": max_range,
-        "threshold": threshold  
-    }
-    experiment_name = "_".join([f"{key}={value}" for key, value in config.items()])
-    wandb.init(project='robot', entity='diogenes-student', config=config, name=experiment_name)
+        env = GridworldEnv(plan=1, epislon=0.2, max_range=max_range, seed=seed)
+        state_dim = len(env.reset())  # 6
+        action_dim = env.action_space.n  # 5
+        agent = DQNAgent(state_dim, action_dim, threshold=threshold)
+        history = []
+        episodes = 10000
 
-    for e in range(episodes):
-        s = env.reset()
-        roll_out = [s]
-        success = False
+        this_file_path = os.path.dirname(os.path.realpath(__file__))
+        input_file = os.path.join(this_file_path, 'plan{}.txt'.format(plan))
+        target_graph = build_graph(input_file, max_range, epsilon)
 
-        for t in range(T):
-            a = agent.get_action(s)
-            s_next, r, done, info = env.step(a)
-            agent.store_experience(s, a, r, s_next, done)
-            s = s_next
-            roll_out += [s]
+        # Log configuration parameters to WandB
+        config_dict = {
+            "plan": plan,
+            "epsilon": epsilon,
+            "T": T,
+            "max_range": max_range,
+            "threshold": threshold,
+            "seed": seed,
+        }
+        experiment_name = "_".join(
+            [f"{key}={value}" for key, value in config_dict.items()])
+        wandb.init(project='robot', entity='diogenes-student',
+                   config=config_dict, name=experiment_name, 
+                   tags=[f"plan_{plan}", f"epsilon_{epsilon}", f"T_{T}", f"max_range_{max_range}", f"threshold_{threshold}", f'seed_{seed}'])
 
-            if done:
-                success = True
-                break
+        for e in range(episodes):
+            s = env.reset()
+            roll_out = [s]
+            success = False
 
-            # Train the agent after each step (you can also train after each episode)
-            agent.train()
+            for t in range(T):
+                a = agent.get_action(s)
+                s_next, r, done, info = env.step(a)
+                agent.store_experience(s, a, r, s_next, done)
+                s = s_next
+                roll_out += [s]
 
-        history += [(roll_out, success)]
+                if done:
+                    success = True
+                    break
 
-        # Update the target network periodically (e.g., every N episodes)
-        if e % 500 == 0:
-            agent.update_target_network()
+                # Train the agent after each step (you can also train after each episode)
+                agent.train()
 
-            output_graph = agent.get_graph(history)
-            rmse = compare_graph(target_graph, output_graph)    
-            print("Errors: ", rmse)
-            wandb.log({"RMSE": rmse})
+            history += [(roll_out, success)]
 
+            # Update the target network periodically (e.g., every N episodes)
+            if e % 500 == 0:
+                output_graph = agent.get_graph(history)
+                rmse = compare_graph(target_graph, output_graph)
+
+                print("Errors: ", rmse)
+                wandb.log({"RMSE": rmse})
+
+                agent.update_target_network()
+
+        wandb.finish()
+        print('done an experiment')

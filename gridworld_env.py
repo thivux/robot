@@ -32,7 +32,7 @@ class GridworldEnv:
 
         self.epsilon = epislon # noise
         self.max_range = max_range # agent's max view
-        self.rng = np.random.RandomState(seed) # pseudo random number generator
+        self.rng = np.random.RandomState(seed) # randomize agent's start position
 
         self.actions = [NOOP, UP, LEFT, DOWN, RIGHT] 
         self.inv_actions = [0, 2, 1, 4, 3] # inversed actions
